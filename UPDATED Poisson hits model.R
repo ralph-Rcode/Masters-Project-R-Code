@@ -15,7 +15,7 @@ get_additive_flicker_trajectory <- function(
     threshold = 1e-9    # Extinction threshold where the allele is deemed extinct
 ) {
   
-  # We simulate enough generations to ensure extinction
+  # simulate enough generations to ensure extinction 
   
   max_gen_guess <- 2000 
   p <- numeric(max_gen_guess)
@@ -23,25 +23,25 @@ get_additive_flicker_trajectory <- function(
   
   for(t in 1:(max_gen_guess-1)) {
     
-    # 1. Calculate Time-Dependent Structure (The Age of the Lineage)
+    #calculate time  dependent structure (age of the lineage)
     # The 't' here represents the age of this specific mutation
     R_LT <- R_LT_eq * (1 - exp(-lambda * (t - 1)))
     R_total <- R_GL + (1 - R_GL) * R_LT
     
-    # 2. Subjective Frequencies (Additive Model)
+    #subjective Frequencies
     p_now <- p[t]
     
-    # Cheater sees: p + (1-p)R
+    # Cheater sees p + (1-p)R
     p_star_C <- p_now + (1 - p_now) * R_total
-    # Altruist sees: p(1-R)
+    # Altruist sees p(1-R)
     p_star_A <- p_now * (1 - R_total)
     
-    # 3. Fitness
+    #fitness
     w_C <- 1 + b * I * (1 - p_star_C)
     w_A <- 1 - c * I + b * I * (1 - p_star_A)
     w_bar <- p_now * w_C + (1 - p_now) * w_A
     
-    # 4. Update
+    # Update
     p_next <- (p_now * w_C) / w_bar
     
     # Check for extinction
@@ -58,7 +58,7 @@ get_additive_flicker_trajectory <- function(
 }
 
 #Poisson superposition
-# This function places the "flickers" onto a timeline based on mutation rate mu.
+#
 
 run_poisson_hits <- function(
     mu,                # Mutation Rate (Events per generation)
@@ -66,16 +66,16 @@ run_poisson_hits <- function(
     flicker_traj       # The shape of one flicker 
 ) {
   
-  # 1. Generate Mutation Events
-  # Draw number of mutations at each time step
-  # (Most steps will be 0, some will be 1 or more)
+  # generate mutation events
+  # draw number of mutations at each time step
+  # most steps will be 0, some will be 1 or more if mu is quite high 
   n_mutations_per_step <- rpois(T_total, lambda = mu)
   
-  # Identify the times where mutations occurred
+  #identify the times where mutations occurred
   mutation_times <- which(n_mutations_per_step > 0)
   mutation_counts <- n_mutations_per_step[mutation_times]
   
-  # 2. Superposition (Add them up)
+  # superposition of cheater freqencies
   # Initialize the global frequency vector
   total_p <- numeric(T_total + length(flicker_traj)) 
   
@@ -84,13 +84,13 @@ run_poisson_hits <- function(
     count <- mutation_counts[i] # In case 2 mutations happen at once
     
     # Add the flicker trajectory to the timeline at the correct start time
-    # We multiply by 'count' if multiple mutations happened at the exact same timestep
+    # multiply by count  if multiple mutations happened at the exact same timestep
     end_t <- start_t + length(flicker_traj) - 1
     
     total_p[start_t:end_t] <- total_p[start_t:end_t] + (flicker_traj * count)
   }
   
-  # Trim back to T_total (remove the "run-off" after simulation ends)
+  # trim back to T_total 
   total_p <- total_p[1:T_total]
   
   return(data.frame(
@@ -100,31 +100,27 @@ run_poisson_hits <- function(
   ))
 }
 
-# ==============================================================================
-# 3. RUN SIMULATIONS
-# ==============================================================================
+#run simulations
 
-# Step A: Pre-calculate the shape of the flicker 
-# (We assume all mutations have the same underlying dynamics)
+# pre-calculate the shape of the flicker 
+# specify parameters
 base_flicker <- get_additive_flicker_trajectory(
   b = 4, c = 1, I = 0.5, lambda = 0.004, R_GL = 0.15, R_LT_eq = 0.5, p0 = 0.001
 )
 
-# Step B: Run for 3 different mutation rates
+# run for 3 different mutation rates
 # Note: mu needs to be high enough to see events, but low enough for the 'rare' assumption
 sim_low <- run_poisson_hits(mu = 0.002, T_total = 2000, flicker_traj = base_flicker)
 sim_med <- run_poisson_hits(mu = 0.006,  T_total = 2000, flicker_traj = base_flicker)
 sim_high <- run_poisson_hits(mu = 0.05,  T_total = 2000, flicker_traj = base_flicker)
 
-# Combine Data
+# combine Data
 all_results <- rbind(sim_low, sim_med, sim_high)
 
-# Factor ordering to ensure plots appear Low -> High
+# factor ordering to ensure plots appear Low -> High
 all_results$MutationRate <- factor(all_results$MutationRate, levels = unique(all_results$MutationRate))
 
-# ==============================================================================
-# 4. PLOTTING
-# ==============================================================================
+#plotting - Gemini AI was used here to assist with the plotting code
 
 p_final <- ggplot(all_results, aes(x = Time, y = Frequency)) +
   # Use a filled area or line. Area looks nice for "Load".
@@ -146,5 +142,6 @@ p_final <- ggplot(all_results, aes(x = Time, y = Frequency)) +
     strip.text = element_text(face = "bold", size = 12),
     panel.grid.minor = element_blank()
   )
+
 
 print(p_final)
