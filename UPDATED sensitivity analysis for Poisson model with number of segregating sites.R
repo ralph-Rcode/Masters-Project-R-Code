@@ -1,14 +1,10 @@
-# ==============================================================================
-# MASTER SCRIPT: THE FLICKER EFFECT SENSITIVITY ANALYSIS
-# ==============================================================================
+
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(patchwork)
 
-# ------------------------------------------------------------------------------
-# 1. CORE SIMULATION FUNCTIONS
-# ------------------------------------------------------------------------------
+
 
 # Generates the shape of a single invasion trajectory
 get_flicker_traj <- function(b, c, I, lambda, R_GL, R_LT_eq, p0=0.001) {
@@ -35,6 +31,7 @@ get_flicker_traj <- function(b, c, I, lambda, R_GL, R_LT_eq, p0=0.001) {
 }
 
 # Poisson Superposition for Mean Load, CV, and State Occupancy
+#Gemini AI was used to debug the rpois function here
 run_poisson_analysis <- function(mu, b, c, I, lambda, R_GL, R_LT_eq, T_total = 1000000) {
   traj <- get_flicker_traj(b, c, I, lambda, R_GL, R_LT_eq)
   len_traj <- length(traj)
@@ -75,9 +72,7 @@ run_poisson_analysis <- function(mu, b, c, I, lambda, R_GL, R_LT_eq, T_total = 1
   return(list(stats = data.frame(Mean_p = m_p, CV = cv_p), occupancy = props))
 }
 
-# ------------------------------------------------------------------------------
-# 2. PLOTTING HELPERS
-# ------------------------------------------------------------------------------
+#plotting
 
 plot_sensitivity_stats <- function(df, param_name, param_expr) {
   p1 <- ggplot(df, aes(x = .data[[param_name]], y = Mean_p)) +
@@ -102,9 +97,7 @@ plot_state_transition <- function(df, x_var, x_label) {
     theme_minimal() + theme(panel.border = element_rect(colour = "black", fill = NA, size = 1), panel.grid = element_blank())
 }
 
-# ------------------------------------------------------------------------------
-# 3. GLOBAL BASELINE & ANALYSIS
-# ------------------------------------------------------------------------------
+#baseline parameters
 BASE <- list(mu=0.006, lambda=0.006, I=0.5, R_LT_eq=0.5, R_GL=0.15, b=4, c=1)
 
 # Function to run both analyses for a given parameter range
@@ -132,13 +125,7 @@ run_full_sweep <- function(param_name, vals, param_expr) {
   return(list(p_stats = p_stats, p_states = p_states))
 }
 
-# ------------------------------------------------------------------------------
-# 4. EXECUTION: RUN ALL SENSITIVITY PROFILES
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
-# 4. EXECUTION: RUN ALL SENSITIVITY PROFILES (STATS & STATES)
-# ------------------------------------------------------------------------------
+#run all sensitivity profiles
 
 # A: Mutation Hit Rate (mu)
 sweep_mu <- run_full_sweep("mu", seq(0.001, 0.02, length.out = 20), 
@@ -168,30 +155,28 @@ sweep_b <- run_full_sweep("b", seq(2, 6, length.out = 9),
 sweep_c <- run_full_sweep("c", seq(0.5, 2.0, length.out = 10), 
                           "Cost (c)")
 
-# ------------------------------------------------------------------------------
-# 5. VIEW RESULTS (CALL THESE TO GENERATE THE PLOTS)
-# ------------------------------------------------------------------------------
+#run results
 
-# To see the Mean/CV and the State Occupancy for any parameter, 
-# simply call the respective parts of the sweep objects:
 
-# Example 1: The Core Mechanism (Lag Rate)
+
+# lag rate sweep
 sweep_lambda$p_stats
 sweep_lambda$p_states
 
-# Example 2: The Driving Pressure (Mutation)
+# mutation rate
 sweep_mu$p_stats
 sweep_mu$p_states
 
 
 
-# Example 3: The Social Stakes (Investment)
+#investment
 sweep_I$p_stats
 sweep_I$p_states
 
-# Example 4: The Hamiltonian Thresholds (Relatedness & Payoffs)
+#R_GL,b,c 
 sweep_RGL$p_states
 sweep_b$p_states
 sweep_c$p_states
 
+#R_LT
 sweep_RLT$p_states
